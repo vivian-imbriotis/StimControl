@@ -2,9 +2,14 @@
 #define BSIGNAL 3 //Pin 3 tied to GY
 
 int a, b;
-long rotation = 0;  //the number of quater-1024ths of a rotation from starting position
-int inertia   = 0;  //the previous direction of motion for cases where the direction of
+
+unsigned short starting_rot;       //The initial rotation.
+long rotation = 0;  //The final rotation, in quater-1024ths of a revolution.
+
+int inertia   = 0;  //The previous direction of motion for cases where the direction of
                     //change since last tick is indeterminate.
+
+
 
 int mod(int a, int b){
   /*Return A modulo B
@@ -22,19 +27,15 @@ int sgn(int x){
 }
 
 int extract_rel_pos(int a, int b){
-  if(a){
-    if(!b){
-      return 0;
-    }else{
-      return 1;
-    }
-  }else{
-    if(b){
-      return 2;
-    }else{
-      return 3;
-    }
+  a=!!a;
+  b=!!b;
+  switch((a<<1) + b){
+    case 0b10: return 0; // rising edge of A wave
+    case 0b11: return 1; // rising edge of B wave
+    case 0b01: return 2; //falling edge of A wave
+    case 0b00: return 3; //falling edge of B wave
   }
+  return 0;
 }
 
 int nearest_match(int rotation, int rel_pos, int inertia){
@@ -42,7 +43,7 @@ int nearest_match(int rotation, int rel_pos, int inertia){
    * return the best match for the change that occured to the
    * rotation (increment or decrement). 
    * If neither increment nor decrement matches, assume motion
-   * continued in the direction inertia, in {1, -1, 0}.
+   * continued in the direction inertia (should be 1, -1, or 0).
    */
   int prev_rel_rot = mod(rotation,4);
   if (prev_rel_rot==rel_pos){
@@ -60,6 +61,9 @@ void setup() {
   Serial.begin(9600);
   pinMode(ASIGNAL, INPUT);
   pinMode(BSIGNAL, INPUT);
+  a = digitalRead(ASIGNAL);
+  b = digitalRead(BSIGNAL);
+  rotation = starting_rot = extract_rel_pos(a,b);
 }
 
 
@@ -74,5 +78,5 @@ void loop() {
     delta = nearest_match(rotation,rel_pos,inertia);
     inertia = sgn(delta);
     rotation += delta;
-  }Serial.println(((double)(rotation))/1024);
+  }Serial.println(((double)(rotation - starting_rot))/1024);
 }
