@@ -1,13 +1,12 @@
 #define ASIGNAL 2 //Pin 2 tied to GN
 #define BSIGNAL 3 //Pin 3 tied to GY
 
-int a, b;
+volatile int a, b;
 
 unsigned short starting_rot;       //The initial rotation.
-long rotation = 0;  //The final rotation, in quater-1024ths of a revolution.
-
-int inertia   = 0;  //The previous direction of motion for cases where the direction of
-                    //change since last tick is indeterminate.
+volatile long rotation = 0;                 //The current rotation, in 1024ths of revolutions (pi/512 radians).
+volatile int inertia   = 0;                 //The previous direction of rotations for cases where the direction of
+                                   //change since last tick is indeterminate.
 
 
 
@@ -19,6 +18,8 @@ int mod(int a, int b){
 }
 
 int sgn(int x){
+  /* returns the sign of x
+   */
   if(x==0){
     return 0;
   }else{
@@ -57,26 +58,33 @@ int nearest_match(int rotation, int rel_pos, int inertia){
   }
 }
 
+
+void update_rotation(void){
+  /* This is an ISR used for an interrupt, so it must be
+   *  void and accept no arguments, forcing the use of
+   *  some globals.
+   */
+    a = digitalRead(ASIGNAL);
+    b = digitalRead(BSIGNAL);
+    int rel_pos = extract_rel_pos(a,b);
+    int delta = nearest_match(rotation,rel_pos,inertia);
+    inertia = sgn(delta);
+    rotation += delta;
+}
+
+
 void setup() {
   Serial.begin(9600);
   pinMode(ASIGNAL, INPUT);
   pinMode(BSIGNAL, INPUT);
-  a = digitalRead(ASIGNAL);
-  b = digitalRead(BSIGNAL);
   rotation = starting_rot = extract_rel_pos(a,b);
+  attachInterrupt(digitalPinToInterrupt(ASIGNAL),update_rotation,CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ASIGNAL),update_rotation,CHANGE);
 }
 
 
 
 void loop() {
-  int i = 0;
-  for(i=0;i<50;i++){
-    int rel_pos, delta, i;
-    a = digitalRead(ASIGNAL);
-    b = digitalRead(BSIGNAL);
-    rel_pos = extract_rel_pos(a,b);
-    delta = nearest_match(rotation,rel_pos,inertia);
-    inertia = sgn(delta);
-    rotation += delta;
-  }Serial.println(((double)(rotation - starting_rot))/1024);
+  delay(50);
+  Serial.println(((float)(rotation - starting_rot))/1024);
 }
