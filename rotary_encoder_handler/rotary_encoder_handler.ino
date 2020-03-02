@@ -1,3 +1,4 @@
+#include "digitalWriteFast.h"
 #define ASIGNAL 2 //Pin 2 tied to GN
 #define BSIGNAL 3 //Pin 3 tied to GY
 
@@ -64,8 +65,8 @@ void update_rotation(void){
    *  void and accept no arguments, forcing the use of
    *  some globals.
    */
-    a = digitalRead(ASIGNAL);
-    b = digitalRead(BSIGNAL);
+    a = digitalReadFast(ASIGNAL);
+    b = digitalReadFast(BSIGNAL);
     int rel_pos = extract_rel_pos(a,b);
     int delta = nearest_match(rotation,rel_pos,inertia);
     inertia = sgn(delta);
@@ -75,8 +76,8 @@ void update_rotation(void){
 
 void setup() {
   Serial.begin(9600);
-  pinMode(ASIGNAL, INPUT);
-  pinMode(BSIGNAL, INPUT);
+  pinModeFast(ASIGNAL, INPUT);
+  pinModeFast(BSIGNAL, INPUT);
   rotation = starting_rot = extract_rel_pos(a,b);
   attachInterrupt(digitalPinToInterrupt(ASIGNAL),update_rotation,CHANGE);
   attachInterrupt(digitalPinToInterrupt(ASIGNAL),update_rotation,CHANGE);
@@ -86,5 +87,5 @@ void setup() {
 
 void loop() {
   delay(50);
-  Serial.println(((float)(rotation - starting_rot))/1024);
+  Serial.println(((float)(rotation - starting_rot))/1024/4);
 }
